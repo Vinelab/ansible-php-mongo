@@ -1,0 +1,24 @@
+---
+- name: install php-pear
+  yum: name={{item}} state=present
+  with_items:
+  - gcc
+  - php-pear
+  tags: php-mongo
+
+- name: determine php extensions directory
+  shell: php -i | grep -i '^extension_dir' | awk '{print $3}'
+  register: php_extension_dir
+  tags: php-mongo
+
+- name: install PHP MongoClient
+  shell: pecl install mongo creates={{php_extension_dir.stdout_lines[0]}}/mongo.so
+  tags: php-mongo
+
+- name: add extension to php.ini configuration
+  lineinfile: dest=/etc/php.ini
+              line="extension=mongo.so"
+              state=present
+  tags: php-mongo
+  notify:
+  - restart php-fpm
