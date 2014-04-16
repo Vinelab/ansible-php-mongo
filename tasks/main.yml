@@ -1,9 +1,14 @@
 ---
-- name: install php-pear
+- name: install deps
   yum: name={{item}} state=present
   with_items:
   - gcc
+  - php-devel.x86_64
   - php-pear
+  tags: php-mongo
+
+- name: set pecl php.ini location
+  shell: pecl config-set php_ini /etc/php.ini
   tags: php-mongo
 
 - name: determine php extensions directory
@@ -11,11 +16,24 @@
   register: php_extension_dir
   tags: php-mongo
 
-- name: install PHP MongoClient
-  shell: pecl install mongo creates={{php_extension_dir.stdout_lines[0]}}/mongo.so
+- name: install MongoClient for php
+  shell: printf "\n" | pecl install mongo creates={{php_extension_dir.stdout_lines[0]}}/mongo.so
   tags: php-mongo
 
-- name: add extension to php.ini configuration
+- name: make mongo.so executable
+  file: path={{php_extension_dir.stdout_lines[0]}}/mongo.so mode=0755
+  tags: php-mongo
+  notify: [restart php-fpm]
+
+- name: add json extension to php.ini configuration
+  lineinfile: dest=/etc/php.ini
+              line="extension=json.so"
+              state=present
+  tags: php-mongo
+  notify:
+  - restart php-fpm
+
+- name: add mongo extension to php.ini configuration
   lineinfile: dest=/etc/php.ini
               line="extension=mongo.so"
               state=present
